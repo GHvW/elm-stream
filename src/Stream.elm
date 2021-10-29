@@ -11,16 +11,20 @@ type alias Thunk a =
     () -> a
 
 
-type Stream a
-    = Cons ( a, Thunk (Stream a) )
+type StreamCell a
+    = Cons ( a, Stream a )
     | Empty
+
+
+type alias Stream a =
+    Thunk (StreamCell a)
 
 
 
 -- private util
 
 
-force : Thunk (Stream a) -> Stream a
+force : Stream a -> StreamCell a
 force thunk =
     thunk ()
 
@@ -31,7 +35,7 @@ force thunk =
 
 head : Stream a -> Maybe a
 head stream =
-    case stream of
+    case force stream of
         Empty ->
             Nothing
 
@@ -41,22 +45,22 @@ head stream =
 
 tail : Stream a -> Stream a
 tail stream =
-    case stream of
+    case force stream of
         Empty ->
             stream
 
         Cons ( _, next ) ->
-            force next
+            next
 
 
 empty : Stream a
 empty =
-    Empty
+    \() -> Empty
 
 
 cons : a -> Stream a -> Stream a
 cons a stream =
-    Cons ( a, \() -> stream )
+    \() -> Cons ( a, stream )
 
 
 
@@ -65,41 +69,41 @@ cons a stream =
 
 filter : (a -> Bool) -> Stream a -> Stream a
 filter predicate stream =
-    case stream of
+    case force stream of
         Empty ->
             stream
 
         Cons ( it, next ) ->
             if predicate it then
-                Cons ( it, \() -> filter predicate (force next) )
+                \() -> Cons ( it, filter predicate next )
 
             else
-                filter predicate (force next)
+                filter predicate next
 
 
 map : (a -> b) -> Stream a -> Stream b
 map func stream =
-    case stream of
+    case force stream of
         Empty ->
-            Empty
+            \() -> Empty
 
         Cons ( it, next ) ->
-            Cons ( func it, \() -> map func (force next) )
+            \() -> Cons ( func it, map func next )
 
 
 zip : Stream a -> Stream b -> Stream ( a, b )
 zip first second =
-    case first of
+    case force first of
         Empty ->
-            Empty
+            \() -> Empty
 
         Cons ( a, nextAs ) ->
-            case second of
+            case force second of
                 Empty ->
-                    Empty
+                    \() -> Empty
 
                 Cons ( b, nextBs ) ->
-                    Cons ( ( a, b ), \() -> zip (force nextAs) (force nextBs) )
+                    \() -> Cons ( ( a, b ), zip nextAs nextBs )
 
 
 
@@ -110,10 +114,10 @@ fromList : List a -> Stream a
 fromList list =
     case list of
         [] ->
-            Empty
+            \() -> Empty
 
         x :: xs ->
-            Cons ( x, \() -> fromList xs )
+            \() -> Cons ( x, fromList xs )
 
 
 main =
