@@ -1,6 +1,8 @@
 module Stream exposing (Stream, cons, empty, filter, fromList, head, map, tail, zip)
 
+import Debug exposing (toString)
 import Html exposing (a, text)
+import List exposing (range)
 
 
 
@@ -87,6 +89,20 @@ map func stream =
             Cons ( func it, \() -> map func (force next) )
 
 
+take : Int -> Stream a -> Stream a
+take n stream =
+    if n == 0 then
+        Empty
+
+    else
+        case stream of
+            Empty ->
+                Empty
+
+            Cons ( a, next ) ->
+                Cons ( a, \() -> take (n - 1) (force next) )
+
+
 zip : Stream a -> Stream b -> Stream ( a, b )
 zip first second =
     case first of
@@ -119,11 +135,13 @@ fromList list =
 main =
     let
         conses =
-            cons 30 (cons 20 (cons 10 empty))
+            cons 40 (cons 30 (cons 20 (cons 10 empty)))
 
         stuff =
             conses
                 |> filter (\x -> x > 15)
                 |> map (\x -> x + 100)
+                |> take 2
+                |> toString
     in
-    text "hello stream!"
+    text ("hello stream! " ++ stuff)

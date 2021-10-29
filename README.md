@@ -1,2 +1,3 @@
 # elm-stream
-Streams inspired by SICP and Okasaki
+
+Streams inspired by SICP and Chris Okasaki
