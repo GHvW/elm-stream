@@ -3,6 +3,7 @@ module Stream exposing (Stream, cons, empty, filter, fromList, head, map, tail, 
 import Debug exposing (toString)
 import Html exposing (a, text)
 import List exposing (range)
+import Html exposing (b)
 
 
 
@@ -117,7 +118,28 @@ zip first second =
                 Cons ( b, nextBs ) ->
                     Cons ( ( a, b ), \() -> zip (force nextAs) (force nextBs) )
 
+type alias Reducer a b = b -> a -> b
 
+
+fold : Reducer a b -> b -> Stream a -> b
+fold reducer initialState stream =
+    case stream of
+        Empty ->
+            Empty
+        Cons (x, xs) ->
+            fold reducer (reducer initialState x) (force xs)
+
+
+scan : Reducer a b -> b -> Stream a -> Stream b
+scan reducer initialState stream =
+    case stream of
+        Empty ->
+            Empty
+        Cons (x, xs) ->
+            let
+                nextState = reducer initialState x
+            in
+            Cons ( nextState, \() -> scan reducer nextState (force xs) )
 
 -- from base data structures
 
