@@ -1,9 +1,8 @@
 module Stream exposing (Stream, cons, empty, filter, fromList, head, map, tail, zip)
 
 import Debug exposing (toString)
-import Html exposing (a, text)
+import Html exposing (a, b, text)
 import List exposing (range)
-import Html exposing (b)
 
 
 
@@ -80,6 +79,42 @@ filter predicate stream =
                 filter predicate (force next)
 
 
+flip2 : (a -> b -> c) -> (b -> a -> c)
+flip2 fn =
+    \b -> \a -> fn a b
+
+
+append : Stream a -> Stream a -> Stream a
+append first second =
+    case second of
+        Empty ->
+            first
+
+        _ ->
+            -- fold (flip2 cons) xs ys
+            case first of
+                Empty ->
+                    second
+
+                Cons ( x, xs ) ->
+                    Cons ( x, \() -> append (force xs) second )
+
+
+concat : Stream (Stream a) -> Stream a
+concat stream =
+    case stream of
+        Empty ->
+            Empty
+
+        Cons ( x, xs ) ->
+            case x of
+                Empty ->
+                    Empty
+
+                Cons ( y, ys ) ->
+                    Cons ( y, \() -> concat (Cons ( force ys, xs )) )
+
+
 map : (a -> b) -> Stream a -> Stream b
 map func stream =
     case stream of
@@ -88,6 +123,11 @@ map func stream =
 
         Cons ( it, next ) ->
             Cons ( func it, \() -> map func (force next) )
+
+
+concatMap : (a -> Stream b) -> Stream a -> Stream b
+concatMap func stream =
+    concat (map func stream)
 
 
 take : Int -> Stream a -> Stream a
@@ -118,16 +158,29 @@ zip first second =
                 Cons ( b, nextBs ) ->
                     Cons ( ( a, b ), \() -> zip (force nextAs) (force nextBs) )
 
-type alias Reducer a b = b -> a -> b
+
+type alias Reducer a b =
+    b -> a -> b
 
 
-fold : Reducer a b -> b -> Stream a -> b
-fold reducer initialState stream =
+foldl : Reducer a b -> b -> Stream a -> b
+foldl reducer initialState stream =
     case stream of
         Empty ->
-            Empty
-        Cons (x, xs) ->
-            fold reducer (reducer initialState x) (force xs)
+            initialState
+
+        Cons ( x, xs ) ->
+            foldl reducer (reducer initialState x) (force xs)
+
+
+foldr : Reducer a b -> b -> Stream a -> b
+foldr reducer initialState stream =
+    case stream of
+        Empty ->
+            initialState
+
+        Cons ( x, xs ) ->
+            reducer (foldr reducer initialState (force xs)) x
 
 
 scan : Reducer a b -> b -> Stream a -> Stream b
@@ -135,11 +188,15 @@ scan reducer initialState stream =
     case stream of
         Empty ->
             Empty
-        Cons (x, xs) ->
+
+        Cons ( x, xs ) ->
             let
-                nextState = reducer initialState x
+                nextState =
+                    reducer initialState x
             in
             Cons ( nextState, \() -> scan reducer nextState (force xs) )
+
+
 
 -- from base data structures
 
