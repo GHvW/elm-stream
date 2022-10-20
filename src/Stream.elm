@@ -1,5 +1,22 @@
-module Stream exposing (Stream, cons, empty, append, concat, 
-    concatMap, filter, fromList, head, map, tail, take, zip, toList, foldl, foldr, scan)
+module Stream exposing
+    ( Stream
+    , append
+    , concat
+    , concatMap
+    , cons
+    , empty
+    , filter
+    , foldl
+    , foldr
+    , fromList
+    , head
+    , map
+    , scan
+    , tail
+    , take
+    , toList
+    , zip
+    )
 
 import Debug exposing (toString)
 import Html exposing (a, b, text)
@@ -197,11 +214,15 @@ scan reducer initialState stream =
             in
             Cons ( nextState, \() -> scan reducer nextState (force xs) )
 
+
+
 -- to other data structures
+
 
 toList : Stream a -> List a
 toList stream =
     foldr (::) [] stream
+
 
 
 -- from base data structures
@@ -216,3 +237,8 @@ fromList list =
         x :: xs ->
             Cons ( x, \() -> fromList xs )
 
+
+
+-- generate
+-- TODO - iterate
+-- TODO - unfold
