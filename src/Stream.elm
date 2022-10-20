@@ -1,4 +1,5 @@
-module Stream exposing (Stream, cons, empty, filter, fromList, head, map, tail, zip)
+module Stream exposing (Stream, cons, empty, append, concat, 
+    concatMap, filter, fromList, head, map, tail, take, zip, toList, foldl, foldr, scan)
 
 import Debug exposing (toString)
 import Html exposing (a, b, text)
@@ -56,9 +57,9 @@ empty =
     Empty
 
 
-cons : a -> Stream a -> Stream a
-cons a stream =
-    Cons ( a, \() -> stream )
+cons : a -> Thunk (Stream a) -> Stream a
+cons a thunkedStream =
+    Cons ( a, thunkedStream )
 
 
 
@@ -91,7 +92,7 @@ append first second =
             first
 
         _ ->
-            -- fold (flip2 cons) xs ys
+            -- foldr cons second first
             case first of
                 Empty ->
                     second
@@ -109,7 +110,7 @@ concat stream =
         Cons ( x, xs ) ->
             case x of
                 Empty ->
-                    Empty
+                    concat (force xs)
 
                 Cons ( y, ys ) ->
                     Cons ( y, \() -> concat (Cons ( force ys, xs )) )
@@ -150,17 +151,17 @@ zip first second =
         Empty ->
             Empty
 
-        Cons ( a, nextAs ) ->
+        Cons ( x, xs ) ->
             case second of
                 Empty ->
                     Empty
 
-                Cons ( b, nextBs ) ->
-                    Cons ( ( a, b ), \() -> zip (force nextAs) (force nextBs) )
+                Cons ( y, ys ) ->
+                    Cons ( ( x, y ), \() -> zip (force xs) (force ys) )
 
 
 type alias Reducer a b =
-    b -> a -> b
+    a -> b -> b
 
 
 foldl : Reducer a b -> b -> Stream a -> b
@@ -170,7 +171,7 @@ foldl reducer initialState stream =
             initialState
 
         Cons ( x, xs ) ->
-            foldl reducer (reducer initialState x) (force xs)
+            foldl reducer (reducer x initialState) (force xs)
 
 
 foldr : Reducer a b -> b -> Stream a -> b
@@ -180,7 +181,7 @@ foldr reducer initialState stream =
             initialState
 
         Cons ( x, xs ) ->
-            reducer (foldr reducer initialState (force xs)) x
+            reducer x (foldr reducer initialState (force xs))
 
 
 scan : Reducer a b -> b -> Stream a -> Stream b
@@ -192,10 +193,15 @@ scan reducer initialState stream =
         Cons ( x, xs ) ->
             let
                 nextState =
-                    reducer initialState x
+                    reducer x initialState
             in
             Cons ( nextState, \() -> scan reducer nextState (force xs) )
 
+-- to other data structures
+
+toList : Stream a -> List a
+toList stream =
+    foldr (::) [] stream
 
 
 -- from base data structures
@@ -210,17 +216,3 @@ fromList list =
         x :: xs ->
             Cons ( x, \() -> fromList xs )
 
-
-main =
-    let
-        conses =
-            cons 40 (cons 30 (cons 20 (cons 10 empty)))
-
-        stuff =
-            conses
-                |> filter (\x -> x > 15)
-                |> map (\x -> x + 100)
-                |> take 2
-                |> toString
-    in
-    text ("hello stream! " ++ stuff)
